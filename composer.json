@@ -15,8 +15,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Hcg\\HelperArray\\": "src/",
-            "Hcg\\CombineImage\\": "src/"
+            "Hcg\\Helper\\": "src/"
         }
     }
 }
