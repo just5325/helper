@@ -6,22 +6,9 @@ namespace Hcg\CombineImage;
 
 /**
  * 拼接多幅图片成为一张图片
- *
- * 参数说明：原图片为文件路径数组，目的图片如果留空，则不保存结果
- *
- * 例子：
- * <code>
- * $ci = new CombineImage(array("D:/Downloads/1.jpg", "D:/Downloads/2.png"), "D:/Downloads/3.png");
- * $ci->combine();
- * $ci->show();
- * </code>
- *
- * @author 张荣杰
- * @version 2012.8.9
  */
 class CombineImage
 {
-
     /**
      * 原图地址数组
      */
@@ -60,11 +47,22 @@ class CombineImage
      * 目标图片地址
      */
     private $destImage;
-
     /**
      * 临时画布
      */
     private $canvas;
+    /**
+     * 临时画布的背景颜色（默认值为白色）
+     */
+    private $canvasBgColor = [
+        'red' => 255,
+        'green' => 255,
+        'blue' => 255,
+    ];
+    /**
+     * 背景色是否为透明
+     */
+    private $transparent = true;
 
     /**
      * MergeImage constructor.
@@ -80,7 +78,7 @@ class CombineImage
         $this->destImage = $desImage;
         $this->width = $width;
         $this->height = $height;
-        $this->mode = self::COMBINE_MODE_HORIZONTAL;
+        $this->mode = self::COMBINE_MODE_VERTICAL;
         $this->canvas = NULL;
     }
 
@@ -135,15 +133,20 @@ class CombineImage
                         $currentRowIndex = floor($tmp);
                     }
 
-
                     $destX = ($i - $currentRowIndex * $this->eachLineCount) * $this->width;
                     $desyY = $currentRowIndex * $this->height;
                 }
 
-                echo '当前索引:' . $i . ',当前行的索引: ' . $currentRowIndex . ',图片位置 X: ' . $destX . ',图片位置 Y: ' . $desyY . PHP_EOL;
-
-                imagecopyresampled($this->canvas, $srcImage, $destX, $desyY,
-                    0, 0, $this->width, $this->height, $srcWidth, $srcHeight);
+                imagecopyresampled(
+                    $this->canvas,
+                    $srcImage, intval(ceil($destX)),
+                    intval(ceil($desyY)),
+                    0, 0,
+                    intval(ceil($this->width)),
+                    intval(ceil($this->height)),
+                    intval(ceil($srcWidth)),
+                    intval(ceil($srcHeight))
+                );
             }
         }
 
@@ -178,54 +181,58 @@ class CombineImage
         $canvasWidth = 0;
         $canvasHeight = 0;
         if ($imageCount > 0) {
-
-
-            //总行数
-            /*  $rowsCount = ceil($imageCount/10);
-              $canvasHeight = $this->height*$rowsCount;
-              $this->eachColumCount = $rowsCount;*/
-            //宽度 = 列数*200
-            if ($imageCount < 4) {
-
-                $canvasWidth = $this->width * $imageCount;
-                $this->eachLineCount = $imageCount;
-                $canvasHeight = $this->height;
-            } else {
-
-                $this->eachLineCount = ceil(sqrt($imageCount)); //列数
-                $this->eachColumCount = ceil($imageCount / $this->eachLineCount);
-                $canvasWidth = $this->width * $this->eachLineCount;
-                $canvasHeight = $this->height * $this->eachColumCount;
+            switch ($this->mode){
+                case self::COMBINE_MODE_VERTICAL:
+                    // 垂直拼接模式
+                    $this->eachLineCount = 1;
+                    $this->eachColumCount = $imageCount;
+                    $canvasWidth = $this->width * $this->eachLineCount;
+                    $canvasHeight = $this->height * $this->eachColumCount;
+                    break;
+                case self::COMBINE_MODE_HORIZONTAL:
+                    // 水平拼接模式
+                    if ($imageCount < 4) {
+                        $canvasWidth = $this->width * $imageCount;
+                        $this->eachLineCount = $imageCount;
+                        $canvasHeight = $this->height;
+                    } else {
+                        $this->eachLineCount = ceil(sqrt($imageCount)); //列数
+                        $this->eachColumCount = ceil($imageCount / $this->eachLineCount);
+                        $canvasWidth = $this->width * $this->eachLineCount;
+                        $canvasHeight = $this->height * $this->eachColumCount;
+                    }
+                    break;
             }
         }
-        echo '图片总数：' . $imageCount . PHP_EOL;
+
         //创建画布
         $this->createCanvas($canvasWidth, $canvasHeight);
     }
 
-    /**创建画布
-     * @param $width
-     * @param $height
+    /**
+     * 创建画布
+     * @param $cwidth
+     * @param $cheight
      */
     private function createCanvas($cwidth, $cheight)
     {
         $totalImage = count($this->srcImages);
-        /* if ($this->mode == self::COMBINE_MODE_HORIZONTAL) {
-             $width = $totalImage * $this->width;
-             $height = $this->height;
-         } else if ($this->mode == self::COMBINE_MODE_VERTICAL) {
-             $width = $this->width;
-             $height = $totalImage * $this->height;
-         }*/
-
-        $this->canvas = imagecreatetruecolor($cwidth, $cheight);
+        if ($this->mode == self::COMBINE_MODE_HORIZONTAL) {
+            $width = $totalImage * $this->width;
+            $height = $this->height;
+        } else if ($this->mode == self::COMBINE_MODE_VERTICAL) {
+            $width = $this->width;
+            $height = $totalImage * $this->height;
+        }
+        $this->canvas = imagecreatetruecolor(intval(ceil($cwidth)), intval(ceil($cheight)));
 
         // 使画布透明
-        $white = imagecolorallocate($this->canvas, 255, 255, 255);
+        $white = imagecolorallocate($this->canvas, $this->canvasBgColor['red'], $this->canvasBgColor['green'], $this->canvasBgColor['blue']);
         imagefill($this->canvas, 0, 0, $white);
-        imagecolortransparent($this->canvas, $white);
-        echo '画布大小:长度：' . $cwidth . '，高度：' . $cheight . PHP_EOL .
-            '每行数量（列数）：' . $this->eachLineCount . ',每列数量（行数）：' . $this->eachColumCount . PHP_EOL;
+
+        if($this->transparent){
+            imagecolortransparent($this->canvas, $white);
+        }
     }
 
     /**
@@ -247,80 +254,120 @@ class CombineImage
     /**
      * @return  String $srcImages
      */
-    public function getSrcImages()
+    public function getSrcImages(): string
     {
         return $this->srcImages;
     }
 
     /**
      * @param String $srcImages
+     * @return CombineImage
      */
-    public function setSrcImages($srcImages)
+    public function setSrcImages(string $srcImages): CombineImage
     {
         $this->srcImages = $srcImages;
+        return $this;
     }
 
     /**
-     * @return the $width
+     * @return int $width
      */
-    public function getWidth()
+    public function getWidth(): int
     {
         return $this->width;
     }
 
     /**
      * @param int $width
+     * @return CombineImage
      */
-    public function setWidth($width)
+    public function setWidth(int $width): CombineImage
     {
         $this->width = $width;
+        return $this;
     }
 
     /**
-     * @return the $height
+     * @return int $height
      */
-    public function getHeight()
+    public function getHeight(): int
     {
         return $this->height;
     }
 
     /**
      * @param int $height
+     * @return CombineImage
      */
-    public function setHeight($height)
+    public function setHeight(int $height): CombineImage
     {
         $this->height = $height;
+        return $this;
     }
 
     /**
-     * @return the $mode
+     * @return string $mode
      */
-    public function getMode()
+    public function getMode(): string
     {
         return $this->mode;
     }
 
     /**
-     * @param const $mode
+     * @param $mode
+     * @return CombineImage
      */
-    public function setMode($mode)
+    public function setMode($mode): CombineImage
     {
         $this->mode = $mode;
+        return $this;
     }
 
     /**
-     * @return the $destImage
+     * @return string $destImage
      */
-    public function getDestImage()
+    public function getDestImage(): string
     {
         return $this->destImage;
     }
 
     /**
      * @param String $destImage
+     * @return CombineImage
      */
-    public function setDestImage($destImage)
+    public function setDestImage(string $destImage): CombineImage
     {
         $this->destImage = $destImage;
+        return $this;
+    }
+
+    /**
+     * 设置Canvas画布背景颜色RGB值
+     *
+     * @param int $red
+     * @param int $green
+     * @param int $blue
+     * @return CombineImage
+     */
+    public function setCanvasBgColor(int $red, int $green, int $blue): CombineImage
+    {
+        $this->canvasBgColor = [
+            'red' => $red,
+            'green' => $green,
+            'blue' => $blue,
+        ];
+        return $this;
+    }
+
+    /**
+     * 设置背景是否透明
+     *
+     * @param bool $transparent
+     * @return CombineImage
+     */
+    public function setTransparent(bool $transparent): CombineImage
+    {
+        $this->transparent = $transparent;
+        return $this;
     }
 }
