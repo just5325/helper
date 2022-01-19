@@ -14,4 +14,8 @@ $arr1 = [
     ['id' => 6, 'type' => 4, 'name' => '黄翠刚'],
 ];
 $arr2 = HelperArray::buildArrByGroupKey($arr1, 'type');
-var_dump($arr2);
+
+// 将二维数组变成指定key
+$arr3 = HelperArray::buildArrByNewKey($arr1, 'id');
+var_dump($arr3);
+
