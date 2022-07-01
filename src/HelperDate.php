@@ -21,6 +21,6 @@ class HelperDate
      */
     public static function timeToDate(int $time, string $format = 'Y-m-d H:i:s')
     {
-        return date($format, $time);
+        return empty($time) ? '' : date($format, $time);
     }
 }
